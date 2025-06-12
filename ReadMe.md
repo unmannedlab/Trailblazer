@@ -18,7 +18,7 @@ Autonomous navigation in off-road environments is a challenging task, especially
 ![LiDAR vs DEM Costmaps](/images/demvslidar.jpg)
 *Fig. 3: Comparison of costmaps generated using LiDAR (4 points/m²) and DEM (1/3 arc-second resolution) data.*
 
-
+For more details, check out the [Paper](https://arxiv.org/abs/2505.09739)
 ---
 
 
