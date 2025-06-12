@@ -1,0 +1,21 @@
+<launch>
+    <!-- Declare arguments for the .npy and .txt files -->
+    <arg name="waypoint_file" default="None" doc="Path to the waypoints file, None if random waypoints are to be generated" />
+    <arg name="site_name" default="rellis" doc="Name of the test site;" />
+    <arg name="cmap_resolution" default="5" doc="Costmap resolution in meters." />
+    <arg name="epsg_code" default="None" doc="EPSG code used byt the point cloud." />
+    <arg name="UTM_zone" default="32614" doc="GPS coordinate in UTM format at origin" />
+    <arg name="image_input" default="$(find camel)/assets/images/rellis/Rellis.tif" doc="Pre-processed input to the overhead model" />
+    <arg name="pointcloud_input" default="$(find camel)/assets/point_cloud/rellis/USGS_LPC_TX_RedRiver_3Area_B2_2018_14RQU410885_LAS_2019.laz" doc="Pre-processed input to the overhead model" />
+    <arg name="osm_file" default="None" doc="OSM file path. Give None if not available" />
+    <arg name="costmap" default="None" doc="Costmap file stored in assets" />
+    <arg name="gps_origin" default="None" doc="GPS coordinate in UTM format at origin" />
+    
+    <!-- Node definition -->
+    <node
+        name="path_generator"
+        pkg="camel"
+        type="camel_pathV2.py"
+        output="screen"
+        args="$(arg image_input) $(arg pointcloud_input) $(arg waypoint_file) $(arg site_name) $(arg cmap_resolution) $(arg epsg_code) $(arg UTM_zone) $(arg osm_file) $(arg costmap) $(arg gps_origin)" />
+</launch>

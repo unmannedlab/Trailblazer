@@ -1,0 +1,20 @@
+seed: 1234
+dataset: "12x12"
+logdir: "model"
+Tmax: 0.25
+
+encoder:
+  input: "rgb+"
+  arch: "CNNDownSize"
+  depth: 3
+  const: 10.0
+
+params:
+  batch_size: 100
+  num_epochs: 50
+  lr: 0.001
+
+
+hydra:
+  job:
+    chdir: False
