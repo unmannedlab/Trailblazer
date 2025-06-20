@@ -1,7 +1,7 @@
 # Trailblazer: Learning Off-Road Costmaps for Long-Range Planning
 
 
-Autonomous navigation in off-road environments is a challenging task, especially for Unmanned Ground Vehicles (UGVs) involved in search and rescue, exploration, and surveillance. **Trailblazer** is a novel framework that automates the generation of costmaps from multi-modal sensor data, such as satellite imagery and LiDAR, to enable efficient and scalable long-range path planning without manual tuning. By leveraging imitation learning and a differentiable A* planner, Trailblazer adapts to diverse terrains and dynamic environments, offering a robust solution for global planning tasks.
+Autonomous navigation in off-road environments is a challenging task, especially for Unmanned Ground Vehicles (UGVs) involved in search and rescue, exploration, and surveillance. **Trailblazer** is a novel framework that automates the generation of costmaps from multi-modal sensor data, such as satellite imagery, LiDAR, DEMs and OpenStreetMaps, to enable efficient and scalable long-range path planning without manual tuning. By leveraging imitation learning and a differentiable A* planner, Trailblazer adapts to diverse terrains and dynamic environments, offering a robust solution for global planning tasks.
 
 
 ---
