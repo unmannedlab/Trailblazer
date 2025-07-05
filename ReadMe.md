@@ -54,7 +54,7 @@ Some dependencies need to be installed manually to ensure the proper functioning
 ## Asset Download
 
 
-The assets required for Camp Roberts are too large to be uploaded to GitHub. You can download them from the following link:  
+The assets required for RELLIS test site are too large to be uploaded to GitHub. You can download them from the following link:  
 [Download Assets](https://drive.google.com/drive/folders/1zuBZ8SxEAVgn8I4qtAB87pzkWF05La-j?usp=sharing)
 
 
