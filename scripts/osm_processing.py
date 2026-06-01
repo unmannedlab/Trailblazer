@@ -2,95 +2,132 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 from skimage.draw import line
-from shapely.geometry import box
+import osmnx as ox
+import pandas as pd
 
-def osm_reader(file_path, crs, semantic_mask,cmap_res,gps_org, gps_extend):
-    gdf = gpd.read_file(file_path)
-    gdf = gdf.to_crs(crs)
-    semantic_mask.setflags(write=True)
+def osm_reader(file_path, crs, semantic_mask, cmap_res=1.0):
+    # 1) Read OSM/Geo data
+    try:
+        gdf = gpd.read_file(file_path,layer='lines')
+    except Exception:
+        # If your OSMnx version errors on layer='lines', remove that kwarg.
+        try:
+            gdf = ox.features_from_xml(
+                file_path,
+                tags={"highway": True, "waterway": True},
+                layer="lines"
+            )
+        except Exception:
+            # Fallback without 'layer' for versions that don't support it
+            print("Warning: Failed to read OSM data.")
+            return semantic_mask
+    # 2) CRS handling
+    try:
+        if gdf.crs is None:
+            # If source CRS is unknown, assume target (best-effort)
+            gdf.set_crs(crs, inplace=True)
+        elif str(gdf.crs) != str(crs):
+            gdf = gdf.to_crs(crs)
+    except Exception:
+        # Keep going even if CRS operations fail
+        pass
 
-    bbox_geom = box(gps_org[0], gps_org[1], gps_extend[0], gps_extend[1])
-    # Filter the GeoDataFrame to only include features within the bounding box
-    gdf = gdf.clip(bbox_geom)
+    # 3) Semantic mask writeable
+    try:
+        semantic_mask.setflags(write=True)
+    except Exception:
+        pass
 
-    # Extract features of interest
-    highway_gdf = gdf[gdf['highway'].notna()]
-    creek_gdf = gdf[gdf['waterway'].notna()]
-    man_made_gdf = gdf[gdf['man_made'].notna()]
+    # 4) Ensure tags/columns exist to avoid KeyErrors
+    for col in ("highway", "waterway"):
+        if col not in gdf.columns:
+            gdf[col] = pd.NA
 
-    # Get dimensions of semantic mask
+    # 5) Filter line-like geometries only (LineString or MultiLineString)
+    gdf = gdf[gdf.geometry.notna()]
+    line_like = gdf.geometry.geom_type.isin(["LineString", "MultiLineString"])
+    gdf_lines = gdf[line_like]
+
+    highway_gdf = gdf_lines[gdf_lines["highway"].notna()]
+    creek_gdf   = gdf_lines[gdf_lines["waterway"].notna()]
+
+    # If nothing to draw, return early
+    if highway_gdf.empty and creek_gdf.empty:
+        return semantic_mask
+
+    # 6) Compute bounds and scales safely
+    minx, miny, maxx, maxy = gdf_lines.total_bounds
+    width = maxx - minx
+    height = maxy - miny
+
     mask_height, mask_width = semantic_mask.shape
 
-    # Get bounds of the GDF data
-    minx, miny, maxx, maxy = gdf.total_bounds
+    # Guard against degenerate bounds
+    if width == 0 or height == 0:
+        return semantic_mask
 
-    # Scale factors
-    x_scale = mask_width / (maxx - minx)
-    y_scale = mask_height / (maxy - miny)
+    x_scale = mask_width / width
+    y_scale = mask_height / height
 
-    def update_mask(geometry, class_value,line_width):
-        if geometry.geom_type == 'LineString':
-            coords = np.array(geometry.coords)
-            process_coords(coords, class_value,line_width)
-        elif geometry.geom_type == 'MultiLineString':
-            for line_geom in geometry.geoms:
-                coords = np.array(line_geom.coords)
-                process_coords(coords, class_value,line_width)
+    # 7) Ensure non-zero widths
+    hw_width = max(1, int(round(5 / float(cmap_res))))
+    ww_width = max(1, int(round(15 / float(cmap_res))))
 
     def process_coords(coords, class_value, line_width):
         # Scale coordinates to match semantic mask dimensions
         scaled_x = ((coords[:, 0] - minx) * x_scale).astype(int)
-        # Flip Y-axis: Invert the scaling for Y-coordinates
-        scaled_y = (mask_height - ((coords[:, 1] - miny) * y_scale)).astype(int)
+        # Flip Y-axis: map top of mask to maxy
+        scaled_y = (mask_height - 1 - ((coords[:, 1] - miny) * y_scale).astype(int))
 
-        # Clip to ensure within bounds
+        # Clip to bounds
         scaled_x = np.clip(scaled_x, 0, mask_width - 1)
         scaled_y = np.clip(scaled_y, 0, mask_height - 1)
 
-        # Draw line on the semantic mask
+        # Draw thickened vertical band around the line
         for i in range(len(scaled_x) - 1):
             rr, cc = line(scaled_y[i], scaled_x[i], scaled_y[i + 1], scaled_x[i + 1])
-            
-            # Calculate half width
-            half_width = line_width // 2
-            
-            # Update the line and surrounding pixels
-            for idx in range(len(rr)):
-                r, c = rr[idx] + int(30/cmap_res) , cc[idx] - int(30/cmap_res)
-                # Check if we're within bounds
-                if r<0 or r >= mask_height or c<0 or c >= mask_width:
-                    continue
-                # Update the center point
+
+            half_w = line_width // 2
+            for r, c in zip(rr, cc):
+                # center pixel
                 semantic_mask[r, c] = class_value
-                
-                # Update points in all directions within the half_width
-                for dr in range(-half_width, half_width + 1):
-                    for dc in range(-half_width, half_width + 1):
-                        # Check if we're within bounds
-                        if (0 <= r + dr < mask_height and 0 <= c + dc < mask_width):
-                            # Optional: You can use distance formula to make circular brush
-                            if dr*dr + dc*dc <= half_width*half_width:  # For circular brush
-                                semantic_mask[r + dr, c + dc] = class_value
+                # thicken vertically
+                if half_w > 0:
+                    r0 = max(0, r - half_w)
+                    r1 = min(mask_height - 1, r + half_w)
+                    semantic_mask[r0:r1 + 1, c] = class_value
 
-    # Update semantic mask for waterways (class value 5)
-    for _, row in creek_gdf.iterrows():
-        update_mask(row.geometry, class_value=11,line_width = int(10/cmap_res))
-    
-    # Update semantic mask for highways (class value 0)
+    def update_mask(geometry, class_value, line_width):
+        geom_type = geometry.geom_type
+        if geom_type == "LineString":
+            coords = np.array(geometry.coords)
+            if len(coords) >= 2:
+                process_coords(coords, class_value, line_width)
+        elif geom_type == "MultiLineString":
+            for line_geom in geometry.geoms:
+                coords = np.array(line_geom.coords)
+                if len(coords) >= 2:
+                    process_coords(coords, class_value, line_width)
+
+    # 8) Draw highways and waterways
     for _, row in highway_gdf.iterrows():
-        update_mask(row.geometry, class_value=0,line_width = int(30/cmap_res))
+        update_mask(row.geometry, class_value=1, line_width=hw_width)
 
-    # Update semantic mask for man_made (class value 1)
-    for _, row in man_made_gdf.iterrows():
-        update_mask(row.geometry, class_value=0,line_width = int(15/cmap_res))
+    for _, row in creek_gdf.iterrows():
+        update_mask(row.geometry, class_value=3, line_width=ww_width)
 
     return semantic_mask
 
 
 if __name__ == "__main__":
     semantic_mask = np.ones((2000, 2000), dtype=np.uint8)
-    updated_mask = osm_reader("assets/OSM/NC_site1/Fbragg_osm.gpkg", "EPSG:32614", semantic_mask)
+    # Provide cmap_res or rely on default
+    updated_mask = osm_reader(
+        "assets/OSM/NC_site1/Fbragg_osm.gpkg",
+        "EPSG:32614",
+        semantic_mask,
+        cmap_res=1.0
+    )
 
-    # Display the resulting mask
-    plt.imshow(updated_mask, cmap='gray')
+    plt.imshow(updated_mask, cmap="gray")
     plt.show()
