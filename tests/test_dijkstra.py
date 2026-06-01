@@ -16,7 +16,7 @@ def _load_dijkstra_module():
         sys.modules["matplotlib.pyplot"] = pyplot_stub
 
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "dijkstra.py"
-    spec = importlib.util.spec_from_file_location("trailblazer_dijkstra", module_path)
+    spec = importlib.util.spec_from_file_location("dijkstra", module_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
