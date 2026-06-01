@@ -62,7 +62,7 @@ The assets required for RELLIS test site are too large to be uploaded to GitHub.
 - Place the `.tif` file in the `assets/images/rellis` folder.  
 - Place the `best.pth` file in the `scripts/weights/segformer` folder.
 
-#### You can find LiDAR data for your area of interest from: [USGS LiDAR Explorer](https://apps.nationalmap.gov/lidar-explorer/), [UK DEFRA Survey data](https://environment.data.gov.uk/survey).
+#### You can find LiDAR data for your area of interest from: [USGS LiDAR Explorer](https://apps.nationalmap.gov/lidar-explorer/), [UK DEFRA Survey data](https://environment.data.gov.uk/survey), [Europe](https://www.lidarandaerialarchaeology.com/europe/).
 #### Satellite imagery can be downloaded from ARCGIS Imagery servers through [QGIS](https://qgis.org/download/).
 #### OSM data can be downloaded from [OpenStreetMaps](https://www.openstreetmap.org/export)
 ---
